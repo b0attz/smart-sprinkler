@@ -123,17 +123,90 @@ function updateWeather(reading) {
 }
 
 // ── Mini Stats ────────────────────────────────
+let lastReadingTime = null;
+
 function updateMini(reading) {
   document.getElementById('mini-device-val').textContent = reading.device;
   document.getElementById('mini-count-val').textContent  = totalCount;
-  const d = new Date(reading.timestamp);
-  document.getElementById('mini-last-val').textContent = d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  lastReadingTime = new Date(reading.timestamp);
+  updateLastSeen();
+  updateDataIndicator();
   const slice = history.slice(0, 10);
   if (slice.length) {
     const avg = (slice.reduce((s, r) => s + parseFloat(r.moisture), 0) / slice.length).toFixed(1);
     document.getElementById('mini-avg-val').textContent = avg + '%';
   }
 }
+
+function updateLastSeen() {
+  if (!lastReadingTime) {
+    document.getElementById('mini-last-val').textContent = '—';
+    return;
+  }
+  const now = new Date();
+  const diff = Math.floor((now - lastReadingTime) / 1000);
+  
+  let text;
+  if (diff < 5) {
+    text = 'Just now';
+  } else if (diff < 60) {
+    text = diff + 's ago';
+  } else if (diff < 3600) {
+    text = Math.floor(diff / 60) + 'm ago';
+  } else {
+    text = Math.floor(diff / 3600) + 'h ago';
+  }
+  
+  document.getElementById('mini-last-val').textContent = text;
+  
+  // Update color based on freshness
+  const el = document.getElementById('mini-last-val');
+  if (diff < 10) {
+    el.style.color = '#2ed573'; // green - fresh
+  } else if (diff < 30) {
+    el.style.color = '#ffa502'; // orange - getting old
+  } else {
+    el.style.color = '#ff4757'; // red - stale
+  }
+}
+
+function updateDataIndicator() {
+  const indicator = document.getElementById('data-indicator');
+  const timeEl = document.getElementById('data-time');
+  
+  if (!lastReadingTime) {
+    indicator.className = 'data-indicator';
+    timeEl.textContent = 'No data';
+    return;
+  }
+  
+  const now = new Date();
+  const diff = Math.floor((now - lastReadingTime) / 1000);
+  
+  let text, className;
+  if (diff < 10) {
+    text = 'Live';
+    className = 'data-indicator active';
+  } else if (diff < 60) {
+    text = diff + 's ago';
+    className = 'data-indicator active';
+  } else if (diff < 300) {
+    text = Math.floor(diff / 60) + 'm ago';
+    className = 'data-indicator stale';
+  } else {
+    text = 'Offline';
+    className = 'data-indicator dead';
+  }
+  
+  timeEl.textContent = text;
+  indicator.className = className;
+}
+
+// Update indicators every second
+setInterval(() => {
+  updateLastSeen();
+  updateDataIndicator();
+}, 1000);
 
 // ── Table ─────────────────────────────────────
 function updateTable() {
